@@ -8,6 +8,7 @@ class Attrs:
     doc_layout: str
     doc_pages: str
     span_layout: str
+    span_heading: str
     span_group: str
 
 

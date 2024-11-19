@@ -2,6 +2,7 @@ from pathlib import Path
 
 from docling.datamodel.base_models import InputFormat
 from docling.document_converter import DocumentConverter, FormatOption
+from docling_core.types.doc.labels import DocItemLabel
 from spacy.language import Language
 from spacy.tokens import Doc, Span, SpanGroup
 
@@ -14,6 +15,11 @@ class spaCyLayout:
         nlp: Language,
         separator: str | None = "\n\n",
         attrs: dict[str, str] = {},
+        headings: list[str] = [
+            DocItemLabel.SECTION_HEADER,
+            DocItemLabel.PAGE_HEADER,
+            DocItemLabel.TITLE,
+        ],
         docling_options: dict[InputFormat, FormatOption] | None = None,
     ) -> None:
         """Initialize the layout parser and Docling converter."""
@@ -23,19 +29,24 @@ class spaCyLayout:
             doc_layout=attrs.get("doc_layout", "layout"),
             doc_pages=attrs.get("doc_pages", "pages"),
             span_layout=attrs.get("span_layout", "layout"),
+            span_heading=attrs.get("span_heading", "heading"),
             span_group=attrs.get("span_group", "layout"),
         )
+        self.headings = headings
         self.converter = DocumentConverter(format_options=docling_options)
         # Set spaCy extension attributes for custom data
         Doc.set_extension(self.attrs.doc_layout, default=None, force=True)
         Doc.set_extension(self.attrs.doc_pages, getter=self.get_pages, force=True)
         Span.set_extension(self.attrs.span_layout, default=None, force=True)
+        Span.set_extension(self.attrs.span_heading, getter=self.get_heading, force=True)
 
     def __call__(self, path: str | Path) -> Doc:
         """Call parser on a path to create a spaCy Doc object."""
         result = self.converter.convert(path)
         inputs = []
         for item in result.document.texts:
+            if item.text == "":
+                continue
             if item.prov:
                 prov = item.prov[0]
                 bounding_box = SpanLayout(
@@ -67,8 +78,6 @@ class spaCyLayout:
         span_data = []
         token_idx = 0
         for item_text, label, layout in inputs:
-            if item_text == "":
-                continue
             # Tokenize the span because we can't rely on the document parsing to
             # give us items that are not split across token boundaries
             with self.nlp.select_pipes(disable=self.nlp.pipe_names):
@@ -85,8 +94,8 @@ class spaCyLayout:
             token_idx += len(span_doc) + (1 if self.sep else 0)
         doc = Doc(self.nlp.vocab, words=words, spaces=spaces)
         spans = []
-        for start, end, label, layout in span_data:
-            span = Span(doc, start=start, end=end, label=label)
+        for i, (start, end, label, layout) in enumerate(span_data):
+            span = Span(doc, start=start, end=end, label=label, span_id=i)
             span._.set(self.attrs.span_layout, layout)
             spans.append(span)
         doc.spans[self.attrs.span_group] = SpanGroup(
@@ -103,3 +112,12 @@ class spaCyLayout:
             span_layout = span._.get(self.attrs.span_layout)
             page_spans[span_layout.page_no].append(span)
         return [(pages[i], page_spans[i]) for i in page_spans]
+
+    def get_heading(self, span: Span) -> Span | None:
+        """Get the closest heading for a span."""
+        spans = list(span.doc.spans[self.attrs.span_group])
+        if span.label_ not in self.headings:
+            # Go through previous layout spans in reverse and find first match
+            for candidate in spans[: span.id][::-1]:
+                if candidate.label_ in self.headings:
+                    return candidate

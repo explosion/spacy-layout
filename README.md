@@ -44,6 +44,8 @@ for span in doc.spans["layout"]:
     print(span.label_)
     # Layout features of the section, including bounding box
     print(span._.layout)
+    # Closest heading to the span (accuracy depends on document structure)
+    print(span._.heading)
 ```
 
 After you've processed the documents, you can [serialize](https://spacy.io/usage/saving-loading#docs) the structured `Doc` objects in spaCy's efficient binary format, so you don't have to re-run the resource-intensive conversion.
@@ -80,7 +82,9 @@ for span in doc.spans["layout"]:
 | `Doc.spans["layout"]` | `spacy.tokens.SpanGroup` | The layout spans in the document. |
 | `Span.label_` | `str` | The type of the extracted layout span, e.g. `"text"` or `"section_header"`. [See here](https://github.com/DS4SD/docling-core/blob/main/docling_core/types/doc/labels.py) for options. |
 | `Span.label` | `int` | The integer ID of the span label. |
+| `Span.id` | `int` | Running index of layout span. |
 | `Span._.layout` | `SpanLayout` | Layout features of a layout span. |
+| `Span._.heading` | `Span` / `None` | Closest heading to a span, if available. |
 
 ### <kbd>dataclass</kbd> PageLayout
 
@@ -121,7 +125,8 @@ layout = spaCyLayout(nlp)
 | --- | --- | --- |
 | `nlp` | `spacy.language.Language` | The initialized `nlp` object to use for tokenization. |
 | `separator` | `str` | Token used to separate sections in the created `Doc` object. The separator won't be part of the layout span. If `None`, no separator will be added. Defaults to `"\n\n"`. |
-| `attrs` | `dict[str, str]` | Override the custom spaCy attributes. Can include `"doc_layout"`, `"doc_pages"`, `"span_layout"` and `"span_group"`. |
+| `attrs` | `dict[str, str]` | Override the custom spaCy attributes. Can include `"doc_layout"`, `"doc_pages"`, `"span_layout"`, `"span_heading"` and `"span_group"`. |
+| `headings` | `list[str]` | Labels of headings to consider for `Span._.heading` detection. Defaults to `["section_header", "page_header", "title"]`. |
 | `docling_options` | `dict[InputFormat, FormatOption]` | [Format options](https://ds4sd.github.io/docling/usage/#advanced-options) passed to Docling's `DocumentConverter`. |
 | **RETURNS** | `spaCyLayout` | The initialized object. |
 
