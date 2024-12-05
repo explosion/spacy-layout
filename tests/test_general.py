@@ -4,6 +4,8 @@ import pytest
 import spacy
 from docling_core.types.doc.base import BoundingBox, CoordOrigin
 from docling_core.types.doc.labels import DocItemLabel
+from pandas.testing import assert_frame_equal
+from spacy.tokens import DocBin
 
 from spacy_layout import spaCyLayout
 from spacy_layout.layout import TABLE_PLACEHOLDER, get_bounding_box
@@ -118,3 +120,27 @@ def test_bounding_box(box, page_height, expected):
     top, bottom, left, right, origin = box
     bbox = BoundingBox(t=top, b=bottom, l=left, r=right, coord_origin=origin)
     assert get_bounding_box(bbox, page_height) == expected
+
+
+@pytest.mark.parametrize("path", [PDF_SIMPLE, PDF_TABLE])
+def test_serialize_roundtrip(path, nlp):
+    layout = spaCyLayout(nlp)
+    doc = layout(path)
+    doc_bin = DocBin(store_user_data=True)
+    doc_bin.add(doc)
+    bytes_data = doc_bin.to_bytes()
+    new_doc_bin = DocBin().from_bytes(bytes_data)
+    new_doc = list(new_doc_bin.get_docs(nlp.vocab))[0]
+    layout_spans = new_doc.spans[layout.attrs.span_group]
+    assert len(layout_spans) == len(doc.spans[layout.attrs.span_group])
+    assert all(
+        isinstance(span._.get(layout.attrs.span_layout), SpanLayout)
+        for span in layout_spans
+    )
+    assert isinstance(new_doc._.get(layout.attrs.doc_layout), DocLayout)
+    tables = doc._.get(layout.attrs.doc_tables)
+    new_tables = new_doc._.get(layout.attrs.doc_tables)
+    for before, after in zip(tables, new_tables):
+        table_before = before._.get(layout.attrs.span_data)
+        table_after = after._.get(layout.attrs.span_data)
+        assert_frame_equal(table_before, table_after)
