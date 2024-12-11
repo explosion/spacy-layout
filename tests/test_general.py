@@ -57,6 +57,15 @@ def test_simple_pipe(nlp):
         assert len(doc.spans[layout.attrs.span_group]) == 4
 
 
+def test_fix_text(nlp):
+    def fix_text(text):
+        return text.replace("Lorem", "LOREM")
+
+    layout = spaCyLayout(nlp, fix_text=fix_text)
+    doc = layout(PDF_SIMPLE)
+    assert doc.text.startswith("LOREM ipsum dolor sit amet")
+
+
 def test_table(nlp):
     layout = spaCyLayout(nlp)
     doc = layout(PDF_TABLE)

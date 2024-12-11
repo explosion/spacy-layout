@@ -38,6 +38,7 @@ class spaCyLayout:
             DocItemLabel.PAGE_HEADER,
             DocItemLabel.TITLE,
         ],
+        fix_text: Callable[[str], str] | None = None,
         display_table: Callable[["DataFrame"], str] | str = TABLE_PLACEHOLDER,
         docling_options: dict["InputFormat", "FormatOption"] | None = None,
     ) -> None:
@@ -56,6 +57,7 @@ class spaCyLayout:
         )
         self.headings = headings
         self.display_table = display_table
+        self.fix_text = fix_text
         self.converter = DocumentConverter(format_options=docling_options)
         # Set spaCy extension attributes for custom data
         Doc.set_extension(self.attrs.doc_layout, default=None, force=True)
@@ -99,9 +101,12 @@ class spaCyLayout:
         for node, _ in result.document.iterate_items():
             if node.self_ref in text_items:
                 item = text_items[node.self_ref]
-                if item.text == "":
+                text = item.text
+                if text == "":
                     continue
-                inputs.append((item.text, item))
+                if self.fix_text:
+                    text = self.fix_text(text)
+                inputs.append((text, item))
             elif node.self_ref in table_items:
                 item = table_items[node.self_ref]
                 if isinstance(self.display_table, str):
