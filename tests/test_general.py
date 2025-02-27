@@ -8,6 +8,7 @@ from docling_core.types.doc.labels import DocItemLabel
 from pandas import DataFrame
 from pandas.testing import assert_frame_equal
 from spacy.tokens import DocBin
+import pandas as pd
 
 from spacy_layout import spaCyLayout
 from spacy_layout.layout import TABLE_PLACEHOLDER, get_bounding_box
@@ -18,6 +19,7 @@ PDF_SIMPLE = Path(__file__).parent / "data" / "simple.pdf"
 DOCX_SIMPLE = Path(__file__).parent / "data" / "simple.docx"
 PDF_SIMPLE_BYTES = PDF_SIMPLE.open("rb").read()
 PDF_TABLE = Path(__file__).parent / "data" / "table.pdf"
+PDF_INDEX = Path(__file__).parent / "data" / "table_document_index.pdf"
 
 
 @pytest.fixture
@@ -100,6 +102,23 @@ def test_table(nlp):
         "| Stanislav Petrov | cat    | Chernihiv, Ukraine |\n"
     )
     assert markdown in doc._.get(layout.attrs.doc_markdown)
+
+
+def test_table_index(nlp):
+    layout = spaCyLayout(nlp)
+    doc = layout(PDF_INDEX)
+    assert len(doc._.get(layout.attrs.doc_tables)) == 3
+    table = doc._.get(layout.attrs.doc_tables)[0]
+    assert table.text == TABLE_PLACEHOLDER
+    assert table.label_ == DocItemLabel.DOCUMENT_INDEX.value
+
+    # Check that each document_index table has a dataframe
+    document_index_tables = [span for span in doc._.get(
+        layout.attrs.doc_tables) if span.label_ == DocItemLabel.DOCUMENT_INDEX.value]
+    for table in document_index_tables:
+        assert table._.data is not None, "Table data not available"
+        assert isinstance(
+            table._.data, pd.DataFrame), "Table data is not a DataFrame"
 
 
 def test_table_placeholder(nlp):

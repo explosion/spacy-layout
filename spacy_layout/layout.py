@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 
 TABLE_PLACEHOLDER = "TABLE"
+TABLE_ITEM_LABELS = [DocItemLabel.TABLE, DocItemLabel.DOCUMENT_INDEX]
 
 # Register msgpack encoders and decoders for custom types
 srsly.msgpack_encoders.register("spacy-layout.dataclass", func=encode_obj)
@@ -146,7 +147,7 @@ class spaCyLayout:
             span = Span(doc, start=start, end=end, label=item.label, span_id=i)
             layout = self._get_span_layout(item, pages)
             span._.set(self.attrs.span_layout, layout)
-            if item.label == DocItemLabel.TABLE:
+            if item.label in TABLE_ITEM_LABELS:
                 span._.set(self.attrs.span_data, item.export_to_dataframe())
             spans.append(span)
         doc.spans[self.attrs.span_group] = SpanGroup(
@@ -190,5 +191,5 @@ class spaCyLayout:
         return [
             span
             for span in doc.spans[self.attrs.span_group]
-            if span.label_ == DocItemLabel.TABLE
+            if span.label_ in TABLE_ITEM_LABELS
         ]
