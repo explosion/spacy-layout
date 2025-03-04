@@ -99,6 +99,17 @@ def display_table(df: pd.DataFrame) -> str:
 layout = spaCyLayout(nlp, display_table=display_table)
 ```
 
+### Adding custom fix-up rules
+
+As with any machine learning process, the model may make mistakes during the extraction phase. To add custom fix-up rules, you can provide a `fix_text` function that's called on all text-based layout spans right after extraction and before the text is tokenized.
+
+```python
+def fix_text(text: str) -> str:
+    return text.replace("ª", "ã")
+
+layout = spaCyLayout(nlp, fix_text=fix_text)
+```
+
 ## 🎛️ API
 
 ### Data and extension attributes
@@ -166,6 +177,7 @@ layout = spaCyLayout(nlp)
 | `separator` | `str` | Token used to separate sections in the created `Doc` object. The separator won't be part of the layout span. If `None`, no separator will be added. Defaults to `"\n\n"`. |
 | `attrs` | `dict[str, str]` | Override the custom spaCy attributes. Can include `"doc_layout"`, `"doc_pages"`, `"doc_tables"`, `"doc_markdown"`, `"span_layout"`, `"span_data"`, `"span_heading"` and `"span_group"`. |
 | `headings` | `list[str]` | Labels of headings to consider for `Span._.heading` detection. Defaults to `["section_header", "page_header", "title"]`. |
+| `fix_text` | `Callable[[str], str]` | Function applying fix-up rules to the text, e.g. to correct common mistakes made by the model. Called on every text-based layout span after extraction. |
 | `display_table` | `Callable[[pandas.DataFrame], str] \| str` | Function to generate the text-based representation of the table in the `Doc.text` or placeholder text. Defaults to `"TABLE"`. |
 | `docling_options` | `dict[InputFormat, FormatOption]` | [Format options](https://ds4sd.github.io/docling/usage/#advanced-options) passed to Docling's `DocumentConverter`. |
 | **RETURNS** | `spaCyLayout` | The initialized object. |
