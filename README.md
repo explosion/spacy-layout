@@ -63,8 +63,6 @@ for doc in layout.pipe(paths):
     print(doc._.layout)
 ```
 
-After you've processed the documents, you can [serialize](https://spacy.io/usage/saving-loading#docs) the structured `Doc` objects in spaCy's efficient binary format, so you don't have to re-run the resource-intensive conversion.
-
 spaCy also allows you to call the `nlp` object on an already created `Doc`, so you can easily apply a pipeline of components for [linguistic analysis](https://spacy.io/usage/linguistic-features) or [named entity recognition](https://spacy.io/usage/linguistic-features#named-entities), use [rule-based matching](https://spacy.io/usage/rule-based-matching) or anything else you can do with spaCy.
 
 ```python
@@ -110,6 +108,27 @@ def fix_text(text: str) -> str:
 layout = spaCyLayout(nlp, fix_text=fix_text)
 ```
 
+### Serialization
+
+After you've processed the documents, you can [serialize](https://spacy.io/usage/saving-loading#docs) the structured `Doc` objects in spaCy's efficient binary format, so you don't have to re-run the resource-intensive conversion.
+
+```python
+from spacy.tokens import DocBin
+
+docs = layout.pipe(["one.pdf", "two.pdf", "three.pdf"])
+doc_bin = DocBin(docs=docs, store_user_data=True)
+doc_bin.to_disk("./file.spacy")
+```
+
+> ⚠️ **Note on deserializing with extension attributes:** The custom extension attributes like `Doc._.layout` are currently registered when `spaCyLayout` is initialized. So if you're loading back `Doc` objects with layout information from a binary file, you'll need to initialize it so the custom attributes can be repopulated. We're planning on making this more elegant in an upcoming version.
+>
+> ```diff
+> + layout = spacyLayout(nlp)
+> doc_bin = DocBin(store_user_data=True).from_disk("./file.spacy")
+> docs = list(doc_bin.get_docs(nlp.vocab))
+> ```
+
+
 ## 🎛️ API
 
 ### Data and extension attributes
@@ -141,7 +160,7 @@ for span in doc.spans["layout"]:
 | Attribute | Type | Description |
 | --- | --- | --- |
 | `page_no` | `int` | The page number (1-indexed). |
-| `width` | `float` | Page with in pixels. |
+| `width` | `float` | Page width in pixels. |
 | `height` | `float` | Page height in pixels. |
 
 ### <kbd>dataclass</kbd> DocLayout
@@ -193,12 +212,12 @@ doc = layout("./starcraft.pdf")
 
 | Argument | Type | Description |
 | --- | --- | --- |
-| `source` | `str \| Path \| bytes` | Path of document to process or bytes. |
+| `source` | `str \| Path \| bytes \| DoclingDocument` | Path of document to process, bytes or already created `DoclingDocument`. |
 | **RETURNS** | `Doc` | The processed spaCy `Doc` object. |
 
 #### <kbd>method</kbd> `spaCyLayout.pipe`
 
-Process multiple documents and create spaCy [`Doc`](https://spacy.io/api/doc) objects. You should use this method if you're processing larger volumes of documents at scale.
+Process multiple documents and create spaCy [`Doc`](https://spacy.io/api/doc) objects. You should use this method if you're processing larger volumes of documents at scale. The behavior of `as_tuples` works like it does in spaCy's [`Language.pipe`](https://spacy.io/api/language#pipe).
 
 ```python
 layout = spaCyLayout(nlp)
@@ -206,7 +225,72 @@ paths = ["one.pdf", "two.pdf", "three.pdf", ...]
 docs = layout.pipe(paths)
 ```
 
+```python
+sources = [("one.pdf", {"id": 1}), ("two.pdf", {"id": 2})]
+for doc, context in layout.pipe(sources, as_tuples=True):
+    ...
+```
+
 | Argument | Type | Description |
 | --- | --- | --- |
-| `sources` | `Iterable[str \| Path \| bytes]` | Paths of documents to process or bytes. |
-| **YIELDS** | `Doc` | The processed spaCy `Doc` object. |
+| `sources` | `Iterable[str \| Path \| bytes] \| Iterable[tuple[str \| Path \| bytes, Any]]` | Paths of documents to process or bytes, or `(source, context)` tuples if `as_tuples` is set to `True`. |
+| `as_tuples` | `bool` | If set to `True`, inputs should be an iterable of `(source, context)` tuples. Output will then be a sequence of `(doc, context)` tuples. Defaults to `False`. |
+| **YIELDS** | `Doc \| tuple[Doc, Any]` | The processed spaCy `Doc` objects or `(doc, context)` tuples if `as_tuples` is set to `True`. |
+
+## 💡 Examples and code snippets
+
+This section includes further examples of what you can do with `spacy-layout`. If you have an example that could be a good fit, feel free to submit a [pull request](https://github.com/explosion/spacy-layout/pulls)!
+
+### Visualize a page and bounding boxes with matplotlib
+
+```python
+import pypdfium2 as pdfium
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
+import spacy
+from spacy_layout import spaCyLayout
+
+DOCUMENT_PATH = "./document.pdf"
+
+# Load and convert the PDF page to an image
+pdf = pdfium.PdfDocument(DOCUMENT_PATH)
+page_image = pdf[2].render(scale=1)  # get page 3 (index 2)
+numpy_array = page_image.to_numpy()
+# Process document with spaCy
+nlp = spacy.blank("en")
+layout = spaCyLayout(nlp)
+doc = layout(DOCUMENT_PATH)
+
+# Get page 3 layout and sections
+page = doc._.pages[2]
+page_layout = doc._.layout.pages[2]
+# Create figure and axis with page dimensions
+fig, ax = plt.subplots(figsize=(12, 16))
+# Display the PDF image
+ax.imshow(numpy_array)
+# Add rectangles for each section's bounding box
+for section in page[1]:
+    # Create rectangle patch
+    rect = Rectangle(
+        (section._.layout.x, section._.layout.y),
+        section._.layout.width,
+        section._.layout.height,
+        fill=False,
+        color="blue",
+        linewidth=1,
+        alpha=0.5
+    )
+    ax.add_patch(rect)
+    # Add text label at top of box
+    ax.text(
+        section._.layout.x,
+        section._.layout.y,
+        section.label_,
+        fontsize=8,
+        color="red",
+        verticalalignment="bottom"
+    )
+
+ax.axis("off")  # hide axes
+plt.show()
+```
