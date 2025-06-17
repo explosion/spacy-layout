@@ -8,6 +8,7 @@ from docling_core.types.doc.labels import DocItemLabel
 from pandas import DataFrame
 from pandas.testing import assert_frame_equal
 from spacy.tokens import DocBin
+import pandas as pd
 
 from spacy_layout import spaCyLayout
 from spacy_layout.layout import TABLE_PLACEHOLDER, get_bounding_box
@@ -18,6 +19,7 @@ PDF_SIMPLE = Path(__file__).parent / "data" / "simple.pdf"
 DOCX_SIMPLE = Path(__file__).parent / "data" / "simple.docx"
 PDF_SIMPLE_BYTES = PDF_SIMPLE.open("rb").read()
 PDF_TABLE = Path(__file__).parent / "data" / "table.pdf"
+PDF_INDEX = Path(__file__).parent / "data" / "table_document_index.pdf"
 
 
 @pytest.fixture
@@ -39,6 +41,21 @@ def test_general(path, nlp, span_labels):
         assert span.text
         assert span.label_ in span_labels
         assert isinstance(span._.get(layout.attrs.span_layout), SpanLayout)
+
+
+@pytest.mark.parametrize("path, pg_no", [(PDF_STARCRAFT, 6), (PDF_SIMPLE, 1)])
+def test_pages(path, pg_no, nlp):
+    layout = spaCyLayout(nlp)
+    doc = layout(path)
+    # This should not raise a KeyError when accessing `pages` dict
+    # Key Error would mean a mismatched pagination on document layout and span layout
+    result = layout.get_pages(doc)
+    assert len(result) == pg_no
+    assert result[0][0].page_no == 1
+    if pg_no == 6:  # there should be 16 or 18 spans on the pg_no 1
+        assert len(result[0][1]) in (16, 18)
+    elif pg_no == 1:  # there should be 4 spans on pg_no 1
+        assert len(result[0][1]) == 4
 
 
 @pytest.mark.parametrize("path", [PDF_SIMPLE, DOCX_SIMPLE])
@@ -64,6 +81,15 @@ def test_fix_text(nlp):
     layout = spaCyLayout(nlp, fix_text=fix_text)
     doc = layout(PDF_SIMPLE)
     assert doc.text.startswith("LOREM ipsum dolor sit amet")
+
+
+def test_simple_pipe_as_tuples(nlp):
+    layout = spaCyLayout(nlp)
+    data = [(PDF_SIMPLE, "pdf"), (DOCX_SIMPLE, "docx")]
+    result = list(layout.pipe(data, as_tuples=True))
+    for doc, _ in result:
+        assert len(doc.spans[layout.attrs.span_group]) == 4
+    assert [context for _, context in result] == ["pdf", "docx"]
 
 
 def test_table(nlp):
@@ -93,6 +119,23 @@ def test_table(nlp):
         "| Stanislav Petrov | cat    | Chernihiv, Ukraine |\n"
     )
     assert markdown in doc._.get(layout.attrs.doc_markdown)
+
+
+def test_table_index(nlp):
+    layout = spaCyLayout(nlp)
+    doc = layout(PDF_INDEX)
+    assert len(doc._.get(layout.attrs.doc_tables)) == 3
+    table = doc._.get(layout.attrs.doc_tables)[0]
+    assert table.text == TABLE_PLACEHOLDER
+    assert table.label_ == DocItemLabel.DOCUMENT_INDEX.value
+
+    # Check that each document_index table has a dataframe
+    document_index_tables = [span for span in doc._.get(
+        layout.attrs.doc_tables) if span.label_ == DocItemLabel.DOCUMENT_INDEX.value]
+    for table in document_index_tables:
+        assert table._.data is not None, "Table data not available"
+        assert isinstance(
+            table._.data, pd.DataFrame), "Table data is not a DataFrame"
 
 
 def test_table_placeholder(nlp):
