@@ -2,7 +2,7 @@
 
 # spaCy Layout: Process PDFs, Word documents and more with spaCy
 
-This plugin integrates with [Docling](https://ds4sd.github.io/docling/) to bring structured processing of **PDFs**, **Word documents** and other input formats to your [spaCy](https://spacy.io) pipeline. It outputs clean, **structured data** in a text-based format and creates spaCy's familiar [`Doc`](https://spacy.io/api/doc) objects that let you access labelled text spans like sections or headings, and tables with their data converted to a `pandas.DataFrame`.
+This plugin integrates with [Docling](https://github.com/docling-project/docling) to bring structured processing of **PDFs**, **Word documents** and other input formats to your [spaCy](https://spacy.io) pipeline. It outputs clean, **structured data** in a text-based format and creates spaCy's familiar [`Doc`](https://spacy.io/api/doc) objects that let you access labelled text spans like sections or headings, and tables with their data converted to a `pandas.DataFrame`.
 
 This workflow makes it easy to apply powerful **NLP techniques** to your documents, including linguistic analysis, named entity recognition, text classification and more. It's also great for implementing **chunking for RAG** pipelines.
 
@@ -186,7 +186,7 @@ layout = spaCyLayout(nlp)
 | `attrs` | `dict[str, str]` | Override the custom spaCy attributes. Can include `"doc_layout"`, `"doc_pages"`, `"doc_tables"`, `"doc_markdown"`, `"span_layout"`, `"span_data"`, `"span_heading"` and `"span_group"`. |
 | `headings` | `list[str]` | Labels of headings to consider for `Span._.heading` detection. Defaults to `["section_header", "page_header", "title"]`. |
 | `display_table` | `Callable[[pandas.DataFrame], str] \| str` | Function to generate the text-based representation of the table in the `Doc.text` or placeholder text. Defaults to `"TABLE"`. |
-| `docling_options` | `dict[InputFormat, FormatOption]` | [Format options](https://ds4sd.github.io/docling/usage/#advanced-options) passed to Docling's `DocumentConverter`. |
+| `docling_options` | `dict[InputFormat, FormatOption]` | [Format options](https://docling-project.github.io/docling/usage/#advanced-options) passed to Docling's `DocumentConverter`. |
 | **RETURNS** | `spaCyLayout` | The initialized object. |
 
 #### <kbd>method</kbd> `spaCyLayout.__call__`
