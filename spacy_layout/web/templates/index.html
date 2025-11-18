@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>spaCy Layout - Fine-Tuning Automatisé</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 5px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .upload-area:hover {
+            background: #f8f9ff;
+        }
+
+        .upload-area input[type="file"] {
+            display: none;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-box {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .stat-box .value {
+            font-size: 2em;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .stat-box .label {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .logs {
+            background: #1e1e1e;
+            color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+        }
+
+        .log-entry .timestamp {
+            color: #888;
+        }
+
+        .log-entry .info {
+            color: #4CAF50;
+        }
+
+        .log-entry .warning {
+            color: #FF9800;
+        }
+
+        .log-entry .error {
+            color: #F44336;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .status-badge.running {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .status-badge.stopped {
+            background: #9E9E9E;
+            color: white;
+        }
+
+        #progressBar {
+            width: 100%;
+            height: 30px;
+            background: #f0f0f0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        #progressBar .progress {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎓 spaCy Layout</h1>
+            <p>Fine-Tuning Automatisé pour Pseudonymisation de Documents Scolaires</p>
+        </div>
+
+        <!-- Statistiques des données -->
+        <div class="card">
+            <h2>📊 Données Chargées</h2>
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-box">
+                    <div class="value" id="statTrainDocs">-</div>
+                    <div class="label">Documents d'entraînement</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value" id="statTestDocs">-</div>
+                    <div class="label">Documents de test</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value" id="statStudents">-</div>
+                    <div class="label">Élèves</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value" id="statSchools">-</div>
+                    <div class="label">Établissements</div>
+                </div>
+            </div>
+            <button class="btn" onclick="loadStats()" style="margin-top: 20px;">Actualiser</button>
+        </div>
+
+        <!-- Configuration et lancement -->
+        <div class="card">
+            <h2>⚙️ Configuration du Fine-Tuning</h2>
+            <form id="configForm">
+                <div class="form-group">
+                    <label>Modèle spaCy de base</label>
+                    <select id="baseModel">
+                        <option value="fr_core_news_sm">fr_core_news_sm (léger)</option>
+                        <option value="fr_core_news_md">fr_core_news_md (moyen)</option>
+                        <option value="fr_core_news_lg" selected>fr_core_news_lg (grand)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Seuil de réussite (%)</label>
+                    <input type="number" id="threshold" value="98" min="0" max="100" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label>Nombre maximum d'itérations</label>
+                    <input type="number" id="maxIterations" value="20" min="1" max="100">
+                </div>
+                <div class="form-group">
+                    <label>API Key Aristote (optionnel si dans .env)</label>
+                    <input type="password" id="apiKey" placeholder="Laisser vide pour utiliser ARISTOTE_API_KEY">
+                </div>
+                <button type="button" class="btn" onclick="startTraining()" id="startBtn">
+                    ▶️ Lancer le Fine-Tuning
+                </button>
+            </form>
+        </div>
+
+        <!-- Statut et progression -->
+        <div class="card">
+            <h2>📈 Progression</h2>
+            <div style="text-align: center; margin-bottom: 20px;">
+                <span class="status-badge stopped" id="statusBadge">Arrêté</span>
+            </div>
+            <div id="progressBar">
+                <div class="progress" id="progress">0%</div>
+            </div>
+            <div id="currentIteration" style="text-align: center; margin-top: 10px; color: #666;">
+                En attente...
+            </div>
+        </div>
+
+        <!-- Logs en temps réel -->
+        <div class="card">
+            <h2>📋 Logs en Temps Réel</h2>
+            <div class="logs" id="logs">
+                <div class="log-entry">En attente du démarrage du fine-tuning...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let currentIteration = 0;
+        let maxIterations = 20;
+
+        // Connexion WebSocket
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/ws/training`);
+
+            ws.onopen = () => {
+                addLog('info', 'WebSocket connecté');
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+
+            ws.onclose = () => {
+                addLog('warning', 'WebSocket déconnecté, reconnexion dans 3s...');
+                setTimeout(connectWebSocket, 3000);
+            };
+
+            ws.onerror = (error) => {
+                addLog('error', 'Erreur WebSocket');
+            };
+        }
+
+        function handleWebSocketMessage(data) {
+            switch(data.type) {
+                case 'iteration_start':
+                    currentIteration = data.iteration;
+                    updateProgress();
+                    addLog('info', `Itération #${data.iteration} démarrée`);
+                    break;
+
+                case 'iteration_end':
+                    addLog('info', `Itération #${data.iteration} terminée - Score: ${data.score.toFixed(1)}/100`);
+                    break;
+
+                case 'prompt_display':
+                    addLog('info', `Prompt ${data.prompt_type} envoyé au LLM`);
+                    break;
+
+                case 'training_complete':
+                    document.getElementById('statusBadge').className = 'status-badge stopped';
+                    document.getElementById('statusBadge').textContent = 'Terminé';
+                    document.getElementById('startBtn').disabled = false;
+                    const results = data.results;
+                    if (results.success) {
+                        addLog('info', `✅ SUCCÈS ! Score final: ${results.final_score.toFixed(1)}/100`);
+                    } else {
+                        addLog('warning', `⚠ Seuil non atteint. Meilleur score: ${results.final_score.toFixed(1)}/100`);
+                    }
+                    break;
+
+                case 'training_error':
+                    document.getElementById('statusBadge').className = 'status-badge stopped';
+                    document.getElementById('statusBadge').textContent = 'Erreur';
+                    document.getElementById('startBtn').disabled = false;
+                    addLog('error', `❌ Erreur: ${data.error}`);
+                    break;
+            }
+        }
+
+        function updateProgress() {
+            const percent = (currentIteration / maxIterations) * 100;
+            document.getElementById('progress').style.width = percent + '%';
+            document.getElementById('progress').textContent = Math.round(percent) + '%';
+            document.getElementById('currentIteration').textContent =
+                `Itération ${currentIteration}/${maxIterations}`;
+        }
+
+        function addLog(type, message) {
+            const logsDiv = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `<span class="timestamp">[${timestamp}]</span> <span class="${type}">${message}</span>`;
+            logsDiv.appendChild(entry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/data/stats');
+                const data = await response.json();
+
+                document.getElementById('statTrainDocs').textContent = data.stats.train_docs || 0;
+                document.getElementById('statTestDocs').textContent = data.stats.test_docs || 0;
+                document.getElementById('statStudents').textContent = data.stats.STUDENT_NAME_count || 0;
+
+                let schoolsCount = 0;
+                if (data.entities.SCHOOL) {
+                    if (typeof data.entities.SCHOOL === 'object') {
+                        schoolsCount = Object.values(data.entities.SCHOOL).reduce((a, b) => a + b, 0);
+                    } else {
+                        schoolsCount = data.entities.SCHOOL;
+                    }
+                }
+                document.getElementById('statSchools').textContent = schoolsCount;
+
+                addLog('info', 'Statistiques actualisées');
+            } catch (error) {
+                addLog('error', 'Erreur lors du chargement des statistiques');
+            }
+        }
+
+        async function startTraining() {
+            const baseModel = document.getElementById('baseModel').value;
+            const threshold = parseFloat(document.getElementById('threshold').value);
+            maxIterations = parseInt(document.getElementById('maxIterations').value);
+            const apiKey = document.getElementById('apiKey').value;
+
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('statusBadge').className = 'status-badge running';
+            document.getElementById('statusBadge').textContent = 'En cours';
+
+            currentIteration = 0;
+            updateProgress();
+
+            const formData = new FormData();
+            formData.append('base_model', baseModel);
+            formData.append('threshold', threshold);
+            formData.append('max_iterations', maxIterations);
+            if (apiKey) {
+                formData.append('api_key', apiKey);
+            }
+
+            try {
+                const response = await fetch('/api/training/start', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    addLog('info', `Fine-tuning démarré (Run ID: ${data.run_id})`);
+                } else {
+                    addLog('error', `Erreur: ${data.error}`);
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('statusBadge').className = 'status-badge stopped';
+                    document.getElementById('statusBadge').textContent = 'Erreur';
+                }
+            } catch (error) {
+                addLog('error', `Erreur de connexion: ${error.message}`);
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('statusBadge').className = 'status-badge stopped';
+                document.getElementById('statusBadge').textContent = 'Erreur';
+            }
+        }
+
+        // Initialisation
+        window.onload = () => {
+            connectWebSocket();
+            loadStats();
+            addLog('info', 'Interface initialisée');
+        };
+    </script>
+</body>
+</html>

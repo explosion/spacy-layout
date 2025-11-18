@@ -129,3 +129,11 @@ exports
 trash
 
 .DS_Store
+
+# Training module - spacy-layout
+logs/
+output/
+data/documents/
+data/annotations/
+*.db
+*.sqlite
