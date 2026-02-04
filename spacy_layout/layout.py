@@ -14,7 +14,7 @@ from typing import (
 import srsly
 from docling.datamodel.base_models import DocumentStream
 from docling.document_converter import DocumentConverter
-from docling_core.types.doc.document import DoclingDocument
+from docling_core.types.doc.document import DoclingDocument, TableItem, TextItem
 from docling_core.types.doc.labels import DocItemLabel
 from spacy.tokens import Doc, Span, SpanGroup
 
@@ -130,7 +130,7 @@ class spaCyLayout:
         return DocumentStream(name="source", stream=BytesIO(source))
 
     def _result_to_doc(self, document: DoclingDocument) -> Doc:
-        inputs = []
+        inputs: list[tuple[str, TextItem | TableItem]] = []
         pages = {
             (page.page_no): PageLayout(
                 page_no=page.page_no,
