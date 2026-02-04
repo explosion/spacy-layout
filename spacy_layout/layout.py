@@ -11,7 +11,7 @@ from typing import (
     overload,
 )
 
-import srsly
+import srsly  # type: ignore[import-untyped]
 from docling.datamodel.base_models import DocumentStream
 from docling.document_converter import DocumentConverter
 from docling_core.types.doc.document import DoclingDocument, TableItem, TextItem
