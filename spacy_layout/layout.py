@@ -207,6 +207,7 @@ class spaCyLayout:
                 return SpanLayout(
                     x=x, y=y, width=width, height=height, page_no=prov.page_no
                 )
+        return None
 
     def get_pages(self, doc: Doc) -> list[tuple[PageLayout, list[Span]]]:
         """Get all pages and their layout spans."""
