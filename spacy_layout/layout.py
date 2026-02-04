@@ -226,6 +226,7 @@ class spaCyLayout:
             for candidate in spans[: span.id][::-1]:
                 if candidate.label_ in self.headings:
                     return candidate
+        return None
 
     def get_tables(self, doc: Doc) -> list[Span]:
         """Get all tables in the document."""
