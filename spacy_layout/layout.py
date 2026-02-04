@@ -189,6 +189,7 @@ class spaCyLayout:
             layout = self._get_span_layout(item, pages)
             span._.set(self.attrs.span_layout, layout)
             if item.label in TABLE_ITEM_LABELS:
+                item = cast(TableItem, item)
                 span._.set(self.attrs.span_data, item.export_to_dataframe())
             spans.append(span)
         doc.spans[self.attrs.span_group] = SpanGroup(
