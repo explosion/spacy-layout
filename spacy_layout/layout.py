@@ -212,7 +212,7 @@ class spaCyLayout:
         """Get all pages and their layout spans."""
         layout = doc._.get(self.attrs.doc_layout)
         pages = {page.page_no: page for page in layout.pages}
-        page_spans = {page.page_no: [] for page in layout.pages}
+        page_spans: dict[int, list[Span]] = {page.page_no: [] for page in layout.pages}
         for span in doc.spans[self.attrs.span_group]:
             span_layout = span._.get(self.attrs.span_layout)
             page_spans[span_layout.page_no].append(span)
