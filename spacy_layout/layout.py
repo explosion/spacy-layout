@@ -144,17 +144,17 @@ class spaCyLayout:
         # We want to iterate over the tree to get different elements in order
         for node, _ in document.iterate_items():
             if node.self_ref in text_items:
-                item = text_items[node.self_ref]
-                if item.text == "":
+                text_item = text_items[node.self_ref]
+                if text_item.text == "":
                     continue
-                inputs.append((item.text, item))
+                inputs.append((text_item.text, text_item))
             elif node.self_ref in table_items:
-                item = table_items[node.self_ref]
+                table_item = table_items[node.self_ref]
                 if isinstance(self.display_table, str):
                     table_text = self.display_table
                 else:
-                    table_text = self.display_table(item.export_to_dataframe())
-                inputs.append((table_text, item))
+                    table_text = self.display_table(table_item.export_to_dataframe())
+                inputs.append((table_text, table_item))
         doc = self._texts_to_doc(inputs, pages)
         doc._.set(self.attrs.doc_layout, DocLayout(pages=[p for p in pages.values()]))
         doc._.set(self.attrs.doc_markdown, document.export_to_markdown())
