@@ -4,3 +4,4 @@ pandas  # version range set by Docling
 srsly  # version range set by spaCy
 # Dev requirements
 pytest
+pandas-stubs
