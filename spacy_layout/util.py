@@ -10,7 +10,8 @@ if TYPE_CHECKING:
     from docling_core.types.doc.base import BoundingBox
 
 TYPE_ATTR = "__type__"
-OBJ_TYPES = {"SpanLayout": SpanLayout, "DocLayout": DocLayout, "PageLayout": PageLayout}
+Layouts = SpanLayout | DocLayout | PageLayout
+OBJ_TYPES: dict[str, type[Layouts]] = {"SpanLayout": SpanLayout, "DocLayout": DocLayout, "PageLayout": PageLayout}
 
 
 def encode_obj(obj: Any, chain: Callable | None = None) -> Any:
