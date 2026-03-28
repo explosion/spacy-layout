@@ -20,6 +20,7 @@ DOCX_SIMPLE = Path(__file__).parent / "data" / "simple.docx"
 PDF_SIMPLE_BYTES = PDF_SIMPLE.open("rb").read()
 PDF_TABLE = Path(__file__).parent / "data" / "table.pdf"
 PDF_INDEX = Path(__file__).parent / "data" / "table_document_index.pdf"
+PDF_DUP_COL = Path(__file__).parent / "data" / "duplicate_columns.pdf"
 
 
 @pytest.fixture
@@ -213,3 +214,15 @@ def test_serialize_roundtrip(path, nlp):
         table_before = before._.get(layout.attrs.span_data)
         table_after = after._.get(layout.attrs.span_data)
         assert_frame_equal(table_before, table_after)
+
+
+@pytest.mark.parametrize("path", [PDF_DUP_COL])
+def test_duplicate_columns(path, nlp):
+    layout = spaCyLayout(nlp)
+    old_doc = layout(path)
+    old_table = old_doc._.tables[0]._.data
+    assert list(old_table.columns) == ['Index', 'Value', 'Value', 'Index', 'Value', 'Value']
+    doc_bin = DocBin(docs=[old_doc], store_user_data=True)
+    new_doc = list(doc_bin.get_docs(nlp.vocab))[0]
+    new_table = new_doc._.tables[0]._.data
+    assert list(new_table.columns) == ['Index', 'Value', 'Value (2)', 'Index (2)', 'Value (3)', 'Value (4)']

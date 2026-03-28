@@ -33,8 +33,24 @@ def decode_obj(obj: Any, chain: Callable | None = None) -> Any:
 def encode_df(obj: Any, chain: Callable | None = None) -> Any:
     """Convert pandas.DataFrame for serialization."""
     if isinstance(obj, DataFrame):
-        return {"data": obj.to_dict(), TYPE_ATTR: "DataFrame"}
+        # ensure unique column names, as data will be lost otherwise
+        df = _ensure_unique_columns(obj)
+        return {"data": df.to_dict(), TYPE_ATTR: "DataFrame"}
     return obj if chain is None else chain(obj)
+
+
+def _ensure_unique_columns(df: DataFrame) -> DataFrame:
+    seen_cols = {}
+    new_cols = []
+    for col_name in df.columns:
+        if col_name not in seen_cols:
+            seen_cols[col_name] = 1
+            new_cols.append(col_name)
+        else:
+            seen_cols[col_name] += 1
+            new_cols.append(f"{col_name} ({seen_cols[col_name]})")
+    df.columns = new_cols
+    return df
 
 
 def decode_df(obj: Any, chain: Callable | None = None) -> Any:
