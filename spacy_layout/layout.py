@@ -14,7 +14,7 @@ from typing import (
 import srsly
 from docling.datamodel.base_models import DocumentStream
 from docling.document_converter import DocumentConverter
-from docling_core.types.doc.document import DoclingDocument
+from docling_core.types.doc.document import DoclingDocument, ContentLayer
 from docling_core.types.doc.labels import DocItemLabel
 from spacy.tokens import Doc, Span, SpanGroup
 
@@ -53,6 +53,7 @@ class spaCyLayout:
         ],
         display_table: Callable[["DataFrame"], str] | str = TABLE_PLACEHOLDER,
         docling_options: dict["InputFormat", "FormatOption"] | None = None,
+        content_layer_options: set[ContentLayer] = [ContentLayer.BODY],
     ) -> None:
         """Initialize the layout parser and Docling converter."""
         self.nlp = nlp
@@ -70,6 +71,7 @@ class spaCyLayout:
         self.headings = headings
         self.display_table = display_table
         self.converter = DocumentConverter(format_options=docling_options)
+        self.content_layer_options = content_layer_options
         # Set spaCy extension attributes for custom data
         Doc.set_extension(self.attrs.doc_layout, default=None, force=True)
         Doc.set_extension(self.attrs.doc_pages, getter=self.get_pages, force=True)
@@ -142,7 +144,9 @@ class spaCyLayout:
         text_items = {item.self_ref: item for item in document.texts}
         table_items = {item.self_ref: item for item in document.tables}
         # We want to iterate over the tree to get different elements in order
-        for node, _ in document.iterate_items():
+        for node, _ in document.iterate_items(
+            included_content_layers=self.content_layer_options
+        ):
             if node.self_ref in text_items:
                 item = text_items[node.self_ref]
                 if item.text == "":
